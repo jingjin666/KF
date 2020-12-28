@@ -51,7 +51,7 @@ gps_measure_noise = 0.1 * ones(1, 3);
 R = diag(gps_measure_noise);
 
 %% KF速度估计
-for k=2:data_num_imu
+for k=1:data_num_imu
     if(k>1)
         deltaT = timestamp_imu(k,1)-timestamp_imu(k-1,1);
     else
@@ -59,19 +59,23 @@ for k=2:data_num_imu
     end
     deltaT = deltaT*1e-6;
     
-    dcm = Quat2Tbn(Quat(k,:));
+    %得到机体坐标系下XYZ三轴加速度
+    aMeas_body_X = IMU(k,1);
+    aMeas_body_Y = IMU(k,2);
+    aMeas_body_Z = IMU(k,3);
+    aMeas_body = [aMeas_body_X;aMeas_body_Y;aMeas_body_Z];
     
-    aMeas_N = IMU(k,1);
-    aMeas_E = IMU(k,2);
-    aMeas_D = IMU(k,3);
+    %quaternion = inverse(Quat(k,:))
+    quaternion = [Quat(k,1),-Quat(k,2),-Quat(k,3),-Quat(k,4)];
+    Tbn = Quat2Tbn(quaternion);
     
-    aMeas = [aMeas_N;aMeas_E;aMeas_D];
-    aMeas = dcm'*aMeas;
-    aMeas_N = aMeas(1);
-    aMeas_E = aMeas(2);
-    aMeas_D = aMeas(3);
+    %得到参考坐标系下的NED三轴加速度
+    aMeas = Tbn*aMeas_body;
+    aMeas_nav_N = aMeas(1);
+    aMeas_nav_E = aMeas(2);
+    aMeas_nav_D = aMeas(3);
     
-    
+    %得到GNSS观测的NED三轴加速度
     gpsMeas_Gspd = GPS(k,1);
     gpsMeas_N = GPS(k,2);
     gpsMeas_E = GPS(k,3);
@@ -83,9 +87,9 @@ for k=2:data_num_imu
     f1 = -deltaT * eye(3);
     F = [eye(3),f1;
          zeros(3),eye(3)];
-    Bu = [deltaT*aMeas_N;
-          deltaT*aMeas_E;
-          deltaT*(aMeas_D+g);
+    Bu = [deltaT*aMeas_nav_N;
+          deltaT*aMeas_nav_E;
+          deltaT*(aMeas_nav_D+g);
           0;
           0;
           0];
@@ -121,8 +125,9 @@ for k=2:data_num_imu
 end
 
 figure;
-%plot(timestamp_imu,GPS(:,1),timestamp_imu,EKF_GSpeed, timestamp_imu,AHRS(:,1));
-plot(timestamp_imu,GPS(:,1), timestamp_imu,EKF_GSpeed(:,1));
+plot(timestamp_imu,GPS(:,1),timestamp_imu,EKF_GSpeed, timestamp_imu,AHRS(:,1));
+%plot(timestamp_imu,GPS(:,1), timestamp_imu,EKF_GSpeed(:,1));
+%plot(timestamp_imu,GPS(:,1), timestamp_imu,AHRS(:,1));
 %plot(timestamp_imu,EKF_GSpeed, timestamp_imu,AHRS(:,1));
 legend('GPS','EKF','AHRS','FontSize',10);
 xlabel('Time(ms)','FontSize',20);
