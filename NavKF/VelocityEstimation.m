@@ -65,8 +65,7 @@ for k=1:data_num_imu
     aMeas_body_Z = IMU(k,3);
     aMeas_body = [aMeas_body_X;aMeas_body_Y;aMeas_body_Z];
     
-    %quaternion = inverse(Quat(k,:))
-    quaternion = [Quat(k,1),-Quat(k,2),-Quat(k,3),-Quat(k,4)];
+    quaternion = [Quat(k,1),Quat(k,2),Quat(k,3),Quat(k,4)];
     Tbn = Quat2Tbn(quaternion);
     
     %得到参考坐标系下的NED三轴加速度
